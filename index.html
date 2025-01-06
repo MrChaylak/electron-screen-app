@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Camera Selector</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+</head>
+<body>
+    <p>
+        We are using Node.js <span id="node-version"></span>,
+        Chromium <span id="chrome-version"></span>,
+        and Electron <span id="electron-version"></span>.
+    </p>
+    <h1>Available Cameras</h1>
+    <select id="camera-select">
+        <option value="">Select a camera</option>
+    </select>
+    <button id="start-camera">Start Camera</button>
+    <button id="stop-camera" disabled>Stop Camera</button>
+    
+    <h2>Video Feed</h2>
+    <video id="video-feed" autoplay playsinline style="width: 640px; height: 480px; border: 1px solid black;"></video>
+    
+    <script src="./renderer.js"></script>
+</body>
+</html>
