@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Camera Selector</title>
+    <title>Camera and Screen Selector</title>
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
 </head>
 <body>
@@ -17,10 +17,19 @@
     </select>
     <button id="start-camera">Start Camera</button>
     <button id="stop-camera" disabled>Stop Camera</button>
-    
+
     <h2>Video Feed</h2>
-    <video id="video-feed" autoplay playsinline style="width: 640px; height: 480px; border: 1px solid black;"></video>
+    <video id="camera-feed" autoplay playsinline style="width: 640px; height: 480px; border: 1px solid black;"></video>
+
+    <h1>Available Screens</h1>
+    <div id="screen-list" style="display: flex; gap: 10px;"></div>
+
+    <h2>Screen Feed</h2>
+    <video id="screen-feed" autoplay playsinline style="width: 640px; height: 480px; border: 1px solid black;"></video>
+
     
-    <script src="./renderer.js"></script>
+
+    <script src="./camera.js"></script>
+    <script src="./screen.js"></script>
 </body>
 </html>

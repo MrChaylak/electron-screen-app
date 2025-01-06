@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cameraSelect = document.getElementById('camera-select');
     const startCameraButton = document.getElementById('start-camera');
     const stopCameraButton = document.getElementById('stop-camera');
-    const videoFeed = document.getElementById('video-feed');
+    const videoFeed = document.getElementById('camera-feed');
 
     let currentStream = null;
 
