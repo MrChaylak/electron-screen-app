@@ -4,45 +4,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startScreenButton = document.createElement('button');
     const stopScreenButton = document.createElement('button');
     let currentStream = null;
+    let currentSelectedScreenId = null;
 
     startScreenButton.id = 'start-screen';
     stopScreenButton.id = 'stop-screen';
     startScreenButton.textContent = 'Start Screen Share';
     stopScreenButton.textContent = 'Stop Screen Share';
     stopScreenButton.disabled = true;
-    startScreenButton.disabled = true; // Disabled by default until a screen is selected
+    startScreenButton.disabled = true;
 
     document.body.appendChild(startScreenButton);
     document.body.appendChild(stopScreenButton);
 
-    try {
-        const sources = await window.electron.getSources();
+    // Function to update the screen list dynamically
+    async function updateScreenOptions() {
+        try {
+            const sources = await window.electron.getSources();
 
-        // Populate the screen list
-        sources.forEach((source) => {
-            const screenOption = document.createElement('div');
-            screenOption.className = 'screen-option';
-            screenOption.style.cursor = 'pointer';
-            screenOption.innerHTML = `
-                <img src="${source.thumbnail.toDataURL()}" alt="Screen Thumbnail" style="width: 150px; height: auto;" />
-                <p>${source.name}</p>
-            `;
-            screenOption.dataset.id = source.id;
+            // Get the current selected screen
+            const selectedScreen = currentSelectedScreenId;
 
-            // Click event to select a screen
-            screenOption.addEventListener('click', () => {
-                if (currentStream) return; // Prevent changing options while sharing
+            // Clear and repopulate the screen list
+            screenList.innerHTML = '';
+            sources.forEach((source) => {
+                const screenOption = document.createElement('div');
+                screenOption.className = 'screen-option';
+                screenOption.style.cursor = currentStream ? 'default' : 'pointer';
+                screenOption.style.opacity = currentStream ? '0.5' : '1';
+                screenOption.innerHTML = `
+                    <img src="${source.thumbnail.toDataURL()}" alt="Screen Thumbnail" style="width: 150px; height: auto;" />
+                    <p>${source.name}</p>
+                `;
+                screenOption.dataset.id = source.id;
 
-                document.querySelectorAll('.screen-option').forEach((el) => el.classList.remove('selected'));
-                screenOption.classList.add('selected');
-                startScreenButton.disabled = false; // Enable start button when a screen is selected
+                // Highlight the previously selected screen
+                if (source.id === selectedScreen) {
+                    screenOption.classList.add('selected');
+                    startScreenButton.disabled = true;
+                }
+
+                // Click event to select a screen (only if sharing is not active)
+                if (!currentStream) {
+                    screenOption.addEventListener('click', () => {
+                        document.querySelectorAll('.screen-option').forEach((el) => el.classList.remove('selected'));
+                        screenOption.classList.add('selected');
+                        currentSelectedScreenId = source.id; // Store the selected screen ID
+                        startScreenButton.disabled = false; // Enable the start button
+                    });
+                }
+
+                screenList.appendChild(screenOption);
             });
 
-            screenList.appendChild(screenOption);
-        });
-    } catch (error) {
-        console.error('Error fetching screen sources:', error);
+            // Handle no screens case
+            if (sources.length === 0) {
+                const noScreenOption = document.createElement('p');
+                noScreenOption.textContent = 'No screens found';
+                screenList.appendChild(noScreenOption);
+            }
+        } catch (error) {
+            console.error('Error updating screen options:', error);
+        }
     }
+
+    // Call the function every 5 seconds to check for new screens
+    setInterval(updateScreenOptions, 5000);
+
+    // Initial population of screen options
+    await updateScreenOptions();
 
     // Start Screen Sharing
     startScreenButton.addEventListener('click', async () => {
@@ -103,6 +132,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 el.style.pointerEvents = 'auto';
                 el.style.opacity = '1';
             });
+
+            currentSelectedScreenId = null; // Reset the selected screen
         }
     });
 });
