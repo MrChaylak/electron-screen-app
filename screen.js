@@ -1,60 +1,146 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const screenList = document.getElementById('screen-list');
+    const screenListContainer = document.createElement('div');
+    const screenList = document.createElement('div');
     const screenFeed = document.getElementById('screen-feed'); // Video element for screen feed
     const startScreenButton = document.createElement('button');
     const stopScreenButton = document.createElement('button');
     let currentStream = null;
-    let currentSelectedScreenId = null;
+    let updateInterval = null; // Interval for updating screen options
+    const sourceSnapshots = new Map(); // To store static snapshots for window options
+
+    screenListContainer.id = 'screen-list-container';
+    screenList.id = 'screen-list';
+    screenList.style.display = 'grid'; // Use grid layout
+    screenList.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    screenList.style.gap = '10px';
+    screenListContainer.style.display = 'none'; // Initially hide the screen options
 
     startScreenButton.id = 'start-screen';
     stopScreenButton.id = 'stop-screen';
-    startScreenButton.textContent = 'Start Screen Share';
+    startScreenButton.textContent = 'Show Screen Options';
     stopScreenButton.textContent = 'Stop Screen Share';
     stopScreenButton.disabled = true;
-    startScreenButton.disabled = true;
 
     document.body.appendChild(startScreenButton);
     document.body.appendChild(stopScreenButton);
+    document.body.appendChild(screenListContainer);
+    screenListContainer.appendChild(screenList);
+
+    // Function to capture a single snapshot for a source
+    async function captureSnapshot(sourceId) {
+        try {
+            const constraints = {
+                audio: false,
+                video: {
+                    mandatory: {
+                        chromeMediaSource: 'desktop',
+                        chromeMediaSourceId: sourceId,
+                    },
+                },
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const video = document.createElement('video');
+            video.srcObject = stream;
+
+            // Wait for the video to load metadata
+            await new Promise((resolve) => (video.onloadedmetadata = resolve));
+            video.play();
+
+            // Capture the snapshot
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Stop the stream after capturing the snapshot
+            stream.getTracks().forEach((track) => track.stop());
+
+            // Return the data URL of the snapshot
+            return canvas.toDataURL();
+        } catch (error) {
+            console.error('Error capturing snapshot:', error);
+            return null;
+        }
+    }
 
     // Function to update the screen list dynamically
     async function updateScreenOptions() {
         try {
             const sources = await window.electron.getSources();
 
-            // Get the current selected screen
-            const selectedScreen = currentSelectedScreenId;
-
             // Clear and repopulate the screen list
             screenList.innerHTML = '';
-            sources.forEach((source) => {
+            for (const source of sources) {
                 const screenOption = document.createElement('div');
                 screenOption.className = 'screen-option';
-                screenOption.style.cursor = currentStream ? 'default' : 'pointer';
-                screenOption.style.opacity = currentStream ? '0.5' : '1';
+                screenOption.style.cursor = 'pointer';
+                screenOption.style.textAlign = 'center';
+                screenOption.style.border = '1px solid #ccc';
+                screenOption.style.padding = '10px';
+                screenOption.style.borderRadius = '4px';
+                screenOption.style.backgroundColor = '#f9f9f9';
+
+                let thumbnail;
+
+                if (source.name.toLowerCase().includes('entire screen')) {
+                    // Use the default thumbnail for "Entire Screen"
+                    thumbnail = source.thumbnail.toDataURL();
+                } else {
+                    // Capture or use cached snapshot for other options
+                    if (!sourceSnapshots.has(source.id)) {
+                        const snapshot = await captureSnapshot(source.id);
+                        if (snapshot) {
+                            sourceSnapshots.set(source.id, snapshot);
+                        }
+                    }
+                    thumbnail = sourceSnapshots.get(source.id) || source.thumbnail.toDataURL();
+                }
+
                 screenOption.innerHTML = `
-                    <img src="${source.thumbnail.toDataURL()}" alt="Screen Thumbnail" style="width: 150px; height: auto;" />
+                    <img src="${thumbnail}" alt="Screen Thumbnail" style="width: 100%; height: auto;" />
                     <p>${source.name}</p>
                 `;
                 screenOption.dataset.id = source.id;
 
-                // Highlight the previously selected screen
-                if (source.id === selectedScreen) {
-                    screenOption.classList.add('selected');
-                    startScreenButton.disabled = true;
-                }
+                // Click event to start sharing the screen
+                screenOption.addEventListener('click', async () => {
+                    try {
+                        const constraints = {
+                            audio: false,
+                            video: {
+                                mandatory: {
+                                    chromeMediaSource: 'desktop',
+                                    chromeMediaSourceId: source.id,
+                                },
+                            },
+                        };
 
-                // Click event to select a screen (only if sharing is not active)
-                if (!currentStream) {
-                    screenOption.addEventListener('click', () => {
-                        document.querySelectorAll('.screen-option').forEach((el) => el.classList.remove('selected'));
-                        screenOption.classList.add('selected');
-                        currentSelectedScreenId = source.id; // Store the selected screen ID
-                        startScreenButton.disabled = false; // Enable the start button
-                    });
-                }
+                        // Stop any existing stream
+                        if (currentStream) {
+                            currentStream.getTracks().forEach((track) => track.stop());
+                        }
+
+                        // Start the selected screen stream
+                        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                        screenFeed.srcObject = currentStream;
+
+                        // Update button and UI states
+                        stopScreenButton.disabled = false;
+                        startScreenButton.disabled = true; // Disable the "Show Screen Options" button
+                        screenListContainer.style.display = 'none'; // Hide the options after selection
+
+                        // Stop the interval for updating options
+                        clearInterval(updateInterval);
+                        updateInterval = null;
+                    } catch (error) {
+                        console.error('Error starting screen share:', error);
+                    }
+                });
 
                 screenList.appendChild(screenOption);
-            });
+            }
 
             // Handle no screens case
             if (sources.length === 0) {
@@ -67,49 +153,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Call the function every 5 seconds to check for new screens
-    setInterval(updateScreenOptions, 5000);
-
-    // Initial population of screen options
-    await updateScreenOptions();
-
-    // Start Screen Sharing
+    // Toggle screen options visibility when "Show Screen Options" is clicked
     startScreenButton.addEventListener('click', async () => {
-        const selectedOption = document.querySelector('.screen-option.selected');
+        if (screenListContainer.style.display === 'none') {
+            screenListContainer.style.display = 'block';
+            await updateScreenOptions(); // Refresh the options
 
-        if (!selectedOption) {
-            alert('Please select a screen to share!');
-            return;
-        }
+            // Start the interval to update options every 5 seconds
+            if (!updateInterval) {
+                updateInterval = setInterval(updateScreenOptions, 5000);
+            }
+        } else {
+            screenListContainer.style.display = 'none';
 
-        const sourceId = selectedOption.dataset.id;
-
-        try {
-            const constraints = {
-                audio: false,
-                video: {
-                    mandatory: {
-                        chromeMediaSource: 'desktop',
-                        chromeMediaSourceId: sourceId,
-                    },
-                },
-            };
-
-            // Start screen sharing
-            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-            screenFeed.srcObject = currentStream;
-
-            // Update button and UI states
-            startScreenButton.disabled = true;
-            stopScreenButton.disabled = false;
-
-            // Disable screen options
-            document.querySelectorAll('.screen-option').forEach((el) => {
-                el.style.pointerEvents = 'none';
-                el.style.opacity = '0.5';
-            });
-        } catch (error) {
-            console.error('Error starting screen share:', error);
+            // Stop the interval for updating options
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
         }
     });
 
@@ -124,16 +185,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             screenFeed.srcObject = null;
 
             // Update button and UI states
-            startScreenButton.disabled = true;
             stopScreenButton.disabled = true;
-
-            // Re-enable screen options
-            document.querySelectorAll('.screen-option').forEach((el) => {
-                el.style.pointerEvents = 'auto';
-                el.style.opacity = '1';
-            });
-
-            currentSelectedScreenId = null; // Reset the selected screen
+            startScreenButton.disabled = false;
         }
     });
 });
