@@ -1,33 +1,26 @@
+const { io } = require("socket.io-client");
+
 document.addEventListener("DOMContentLoaded", () => {
-    const connectionStatus = document.getElementById("connection-status");
-    const targetClientInput = document.getElementById("target-client");
-    const messageContentInput = document.getElementById("message-content");
-    const sendMessageButton = document.getElementById("send-message");
-    const messagesDiv = document.getElementById("messages");
-
-    // Update client list
-    window.socketAPI.onClientListUpdate((clients) => {
-        connectionStatus.textContent = `Connected clients: ${clients.join(", ")}`;
+    // Connect to the signaling server
+    const socket = io("http://localhost:8181", {
+        auth: {
+            userName: "electron",
+            password: "x", // Make sure this matches the server's requirement
+        },
     });
 
-    // Handle incoming signaling messages
-    window.socketAPI.onSignalingMessage((data) => {
-        const message = document.createElement("p");
-        message.textContent = `Message from ${data.from}: ${data.message}`;
-        messagesDiv.appendChild(message);
+    // Log connection status
+    socket.on("connect", () => {
+        console.log("Connected to server with ID:", socket.id);
     });
 
-    // Send a signaling message
-    sendMessageButton.addEventListener("click", () => {
-        const target = targetClientInput.value;
-        const message = messageContentInput.value;
+    // Log messages received from the server
+    socket.on("message", (data) => {
+        console.log("Received message from server:", data);
+    });
 
-        if (!target || !message) {
-            alert("Please specify a target client and message.");
-            return;
-        }
-
-        window.socketAPI.sendSignal(target, message);
-        messageContentInput.value = "";
+    // Handle disconnection
+    socket.on("disconnect", () => {
+        console.log("Disconnected from server");
     });
 });

@@ -1,3 +1,5 @@
+const { ipcRenderer } = require('electron');
+
 document.addEventListener('DOMContentLoaded', async () => {
     const screenListContainer = document.createElement('div');
     const screenList = document.createElement('div');
@@ -6,7 +8,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const stopScreenButton = document.createElement('button');
     let currentStream = null;
     let updateInterval = null; // Interval for updating screen options
-    const sourceSnapshots = new Map(); // To store static snapshots for window options
 
     screenListContainer.id = 'screen-list-container';
     screenList.id = 'screen-list';
@@ -26,49 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.appendChild(screenListContainer);
     screenListContainer.appendChild(screenList);
 
-    // Function to capture a single snapshot for a source
-    async function captureSnapshot(sourceId) {
-        try {
-            const constraints = {
-                audio: false,
-                video: {
-                    mandatory: {
-                        chromeMediaSource: 'desktop',
-                        chromeMediaSourceId: sourceId,
-                    },
-                },
-            };
-
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            const video = document.createElement('video');
-            video.srcObject = stream;
-
-            // Wait for the video to load metadata
-            await new Promise((resolve) => (video.onloadedmetadata = resolve));
-            video.play();
-
-            // Capture the snapshot
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Stop the stream after capturing the snapshot
-            stream.getTracks().forEach((track) => track.stop());
-
-            // Return the data URL of the snapshot
-            return canvas.toDataURL();
-        } catch (error) {
-            console.error('Error capturing snapshot:', error);
-            return null;
-        }
-    }
-
     // Function to update the screen list dynamically
     async function updateScreenOptions() {
         try {
-            const sources = await window.electron.getSources();
+            const sources = await ipcRenderer.invoke('get-sources');
 
             // Clear and repopulate the screen list
             screenList.innerHTML = '';
@@ -82,21 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 screenOption.style.borderRadius = '4px';
                 screenOption.style.backgroundColor = '#f9f9f9';
 
-                let thumbnail;
-
-                if (source.name.toLowerCase().includes('entire screen')) {
-                    // Use the default thumbnail for "Entire Screen"
-                    thumbnail = source.thumbnail.toDataURL();
-                } else {
-                    // Capture or use cached snapshot for other options
-                    if (!sourceSnapshots.has(source.id)) {
-                        const snapshot = await captureSnapshot(source.id);
-                        if (snapshot) {
-                            sourceSnapshots.set(source.id, snapshot);
-                        }
-                    }
-                    thumbnail = sourceSnapshots.get(source.id) || source.thumbnail.toDataURL();
-                }
+                const thumbnail = source.thumbnail.toDataURL();
 
                 screenOption.innerHTML = `
                     <img src="${thumbnail}" alt="Screen Thumbnail" style="width: 100%; height: auto;" />

@@ -1,12 +1,12 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
-const path = require('path');
 
 function createWindow() {
     const win = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: false,
+            nodeIntegration: true,
         },
     });
 
@@ -31,8 +31,7 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('get-sources', async () => {
     return await desktopCapturer.getSources({
-        types: ['screen', 'window'], // Include both screen and window options
-        thumbnailSize: { width: 300, height: 200 }, // Adjust thumbnail size for better visibility
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 300, height: 200 },
     });
 });
-
