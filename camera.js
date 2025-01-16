@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const videoFeed = document.getElementById('camera-feed');
 
     let currentStream = null;
+    let dataChannel = null; // Store the reference to the WebRTC data channel
 
     // Function to populate camera options
     async function updateCameraOptions() {
@@ -40,6 +41,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 noCameraOption.value = '';
                 noCameraOption.textContent = 'No cameras found';
                 cameraSelect.appendChild(noCameraOption);
+            }
+
+            // Send the updated camera options via the data channel
+            if (dataChannel && dataChannel.readyState === 'open') {
+                const cameraList = videoDevices.map(device => ({
+                    deviceId: device.deviceId,
+                    label: device.label || `Camera ${index + 1}`
+                }));
+                dataChannel.send(JSON.stringify({ type: 'cameraOptions', cameras: cameraList }));
             }
         } catch (error) {
             console.error('Error updating camera options:', error);
@@ -105,4 +115,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tracks = stream.getTracks();
         tracks.forEach(track => track.stop());
     }
+
+    // Expose a method to set the WebRTC data channel from outside
+    window.setDataChannel = (channel) => {
+        dataChannel = channel;
+    };
 });
