@@ -1,19 +1,18 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('electron', {
-    getSources: async () => {
-        return await ipcRenderer.invoke('get-sources');
-    },
+contextBridge.exposeInMainWorld('electronAPI', {
+  // Signaling
+  sendSignalingMessage: (message) => {
+      console.log('Preload: Sending signaling message', message);
+      ipcRenderer.send('signaling-message', message);
+  },
+  onSignalingMessage: (callback) => {
+      ipcRenderer.on('signaling-message', (event, message) => {
+          console.log('Preload: Received signaling message', message);
+          callback(message);
+      });
+  },
+
+  // Invoke methods
+  invoke: (channel, args) => ipcRenderer.invoke(channel, args),
 });
-
-
-window.addEventListener('DOMContentLoaded', () => {
-    const replaceText = (selector, text) => {
-      const element = document.getElementById(selector)
-      if (element) element.innerText = text
-    }
-  
-    for (const type of ['chrome', 'node', 'electron']) {
-      replaceText(`${type}-version`, process.versions[type])
-    }
-  })
