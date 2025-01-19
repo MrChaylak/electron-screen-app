@@ -2,6 +2,7 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer } = require('electron');
 const path = require('path');
 const WebSocket = require('ws');
+// const robot = require('@jitsi/robotjs');
 
 let mainWindow;
 

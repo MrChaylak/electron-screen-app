@@ -55,6 +55,7 @@
       const screens = sources.map(source => ({
           id: source.id,
           name: source.name,
+          thumbnail: source.thumbnail.toDataURL(), // Add thumbnail URL
       }));
       window.electronAPI.sendSignalingMessage({ type: 'screen-list', screens });
   }
