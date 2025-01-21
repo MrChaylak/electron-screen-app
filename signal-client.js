@@ -35,6 +35,17 @@
 
       peerConnection.onconnectionstatechange = () => {
           console.log(`Peer connection state for ${id}:`, peerConnection.connectionState);
+          if (peerConnection.connectionState === 'disconnected') {
+                console.log(`Peer connection disconnected for ${id}`);
+                if (localStreams[id]) {
+                    localStreams[id].getTracks().forEach(track => track.stop());
+                    delete localStreams[id];
+                }
+                if (peerConnections[id]) {
+                    peerConnections[id].close();
+                    delete peerConnections[id];
+                }
+            }
       };
 
       // Store the peer connection in the peerConnections object
@@ -243,3 +254,31 @@
   // Listen for signaling messages from the main process
   window.electronAPI.onSignalingMessage(handleSignalingMessage);
 })();
+
+function handleDataChannelMessage(data) {
+    // Parse the JSON message
+    let message;
+    try {
+        message = JSON.parse(data);
+    } catch (e) {
+        console.error('Error parsing data channel message:', e);
+        return;
+    }
+
+    if (message.type === 'mouse-move') {
+        const { x, y } = message;
+        window.electronAPI.sendMouseMove(x, y);
+    } else if (message.type === 'mouse-click') {
+        const { button } = message;
+        window.electronAPI.sendMouseClick(button);
+    } else if (message.type === 'key-press') {
+        const { key , modifiers } = message;
+        window.electronAPI.sendKeyPress(key, modifiers);
+    } else if (message.type === 'mouse-scroll') {
+        const { x, y } = message;
+        window.electronAPI.sendMouseScroll(x, y);
+    }
+    else {
+        console.log('Unknown data channel message type:', message.type);
+    }
+}

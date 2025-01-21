@@ -13,6 +13,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       });
   },
 
+  // Remote control
+  sendMouseMove: (x, y) => ipcRenderer.send('mouse-move', { x, y }),
+  sendMouseClick: (button) => ipcRenderer.send('mouse-click', { button }),
+  sendKeyPress: (key, modifiers) => ipcRenderer.send('key-press', { key , modifiers }),
+  sendMouseScroll: (x, y) => ipcRenderer.send('mouse-scroll', { x, y }),
+
+  // IPC methods
+  send: (channel, data) => ipcRenderer.send(channel, data),
+  on: (channel, callback) => ipcRenderer.on(channel, (event, data) => callback(data)),
+
   // Invoke methods
   invoke: (channel, args) => ipcRenderer.invoke(channel, args),
 });
