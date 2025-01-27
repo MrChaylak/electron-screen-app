@@ -1,6 +1,6 @@
 # WebSocket Signaling Server
 
-This **Electron** app takes the devices available screens and cameras to send their feed to **Vue** via **WebRTC** so they can be displayed and control remotely with **Robotjs**
+This **Electron** app takes the devices available screens and cameras to send their feed to **Vue** via **WebRTC** so they can be displayed and controlled remotely with **Robotjs**
 
 ## Table of Contents
 
@@ -17,6 +17,7 @@ This **Electron** app takes the devices available screens and cameras to send th
 - 🟢 [Vue](https://vuejs.org/) for frontend framework.
 - 🔵 [Electron](https://www.electronjs.org/) for getting devices screen and camera.
 - 🟡 [WebRTC](https://webrtc.org/) for real-time stream of screen and camera.
+- 🟠 [Robotjs](https://www.npmjs.com/package/robotjs) for remote screen control.
 
 ## 📌 Prerequisites
 
