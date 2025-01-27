@@ -1,6 +1,15 @@
 # Created by https://www.toptal.com/developers/gitignore/api/node,vuejs,vue
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,vuejs,vue
 
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
 ### Node ###
 # Logs
 logs
